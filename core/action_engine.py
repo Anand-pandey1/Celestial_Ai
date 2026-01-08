@@ -1,28 +1,48 @@
-import pyautogui
-import time
+import os
+import subprocess
+from camera import start_camera, stop_camera
+from automation import open_app_via_search
 
-def execute_action(action):
-    if action["action"] == "open_app":
-        app = action["app"]
 
-        # Open Start Menu
-        pyautogui.press("win")
-        time.sleep(0.5)
+def open_app_windows(app_name: str) -> bool:
+    # 1️⃣ Native Windows shell
+    try:
+        os.startfile(app_name)
+        return True
+    except:
+        pass
 
-        # Type app name
-        pyautogui.write(app, interval=0.05)
-        time.sleep(0.5)
+    # 2️⃣ PATH executable
+    try:
+        subprocess.Popen(app_name)
+        return True
+    except:
+        pass
 
-        # Press Enter
-        pyautogui.press("enter")
+    # 3️⃣ UI automation fallback
+    return open_app_via_search(app_name)
 
-        return f"Opening {app}"
 
-    elif action["action"] == "alt_tab":
-        pyautogui.keyDown("alt")
-        pyautogui.press("tab")
-        pyautogui.keyUp("alt")
-        return "Switched window"
+def execute_action(action: dict):
+    action_type = action.get("action")
 
-    else:
-        return "Unknown action"
+    if action_type == "open_app":
+        app = action.get("app")
+
+        if open_app_windows(app):
+            return f"Opening {app}"
+        else:
+            return f"Failed to open {app}"
+
+    elif action_type == "camera_on":
+        start_camera()
+        return "Camera activated"
+
+    elif action_type == "camera_off":
+        stop_camera()
+        return "Camera stopped"
+
+    elif action_type == "unknown":
+        return "I didn't understand that command"
+
+    return "Action not supported yet"

@@ -1,20 +1,26 @@
-def parse_command(text):
-    text = text.lower().strip()
+def parse_command(command: str) -> dict:
+    command = command.lower().strip()
 
-    # MODE SWITCHING
-    if "camera mode" in text:
-        return {"action": "set_mode", "mode": "CAMERA"}
+    # -------- SYSTEM --------
+    if command in ["exit", "quit", "shutdown"]:
+        return {"action": "exit"}
 
-    if "normal mode" in text:
-        return {"action": "set_mode", "mode": "NORMAL"}
+    # -------- MODE CONTROL --------
+    if "set mode" in command:
+        mode = command.replace("set mode", "").strip()
+        return {"action": "set_mode", "mode": mode}
 
-    # OPEN ANY APP
-    if text.startswith("open "):
-        app_name = text.replace("open ", "").strip()
+    # -------- CAMERA CONTROL (DAY 2) --------
+    if "switch to camera" in command or "camera on" in command:
+        return {"action": "camera_on"}
+
+    if "exit camera" in command or "camera off" in command:
+        return {"action": "camera_off"}
+
+    # -------- APP CONTROL (DAY 1) --------
+    if command.startswith("open "):
+        app_name = command.replace("open", "").strip()
         return {"action": "open_app", "app": app_name}
 
-    # ALT TAB
-    if "alt tab" in text or "switch window" in text:
-        return {"action": "alt_tab"}
-
-    return {"action": "unknown", "raw": text}
+    # -------- FALLBACK --------
+    return {"action": "unknown"}

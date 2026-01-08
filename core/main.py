@@ -4,23 +4,39 @@ from mode_manager import set_mode, get_mode
 import keyboard
 import sys
 
+
 def emergency_exit():
-    print("\nEMERGENCY EXIT ACTIVATED")
+    print("\n🚨 EMERGENCY EXIT ACTIVATED")
     sys.exit(0)
 
+
+# Global hotkey for emergency shutdown
 keyboard.add_hotkey("ctrl+shift+q", emergency_exit)
 
-print("Celestial_Ai Started")
+print("🌌 Celestial_Ai Started")
 print("Emergency Exit: CTRL + SHIFT + Q")
 
 while True:
-    command = input(f"[{get_mode()}] >> ")
+    try:
+        command = input(f"[{get_mode()}] >> ").strip()
 
-    action = parse_command(command)
+        if not command:
+            continue
 
-    if action["action"] == "set_mode":
-        response = set_mode(action["mode"])
-    else:
-        response = execute_action(action)
+        action = parse_command(command)
 
-    print("Celestial_Ai:", response)
+        if action["action"] == "set_mode":
+            response = set_mode(action["mode"])
+
+        elif action["action"] == "exit":
+            print("👋 Shutting down Celestial_Ai")
+            break
+
+        else:
+            response = execute_action(action)
+
+        print("Celestial_Ai:", response)
+
+    except KeyboardInterrupt:
+        print("\n👋 Interrupted by user")
+        break
