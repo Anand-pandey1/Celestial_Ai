@@ -17,4 +17,10 @@ def parse_command(command):
     if "mouse control off" in command:
         return {"action": "mouse_off"}
 
+    if command.startswith("open "):
+        app_name = command.replace("open ", "").strip()
+        return {
+            "action": "open_app",
+            "app": app_name
+        }
     return {"action": "execute", "command": command}

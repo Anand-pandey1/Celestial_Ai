@@ -6,7 +6,17 @@ import numpy as np
 import time
 from state import state
 
-# MediaPipe setup
+# ===================== TUNING PARAMETERS =====================
+SMOOTHING = 0.75           # 0.6–0.85 (higher = smoother, slower)
+PINCH_THRESHOLD = 0.04     # pinch sensitivity
+SCROLL_THRESHOLD = 0.035
+SCROLL_SPEED = 300         # scroll intensity
+CLICK_COOLDOWN = 0.6       # seconds
+MOVE_DURATION = 0.02       # mouse move speed
+FRAME_WIDTH = 480
+FRAME_HEIGHT = 360
+# =============================================================
+
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(
     max_num_hands=1,
@@ -15,18 +25,29 @@ hands = mp_hands.Hands(
 )
 mp_draw = mp.solutions.drawing_utils
 
-# Screen size
 SCREEN_W, SCREEN_H = pyautogui.size()
 
-# Click control
-last_click_time = 0
-CLICK_DELAY = 0.6  # seconds (prevents spam clicking)
+last_left_click = 0
+last_right_click = 0
+
+# Smoothed cursor position
+prev_x, prev_y = 0, 0
+
+
+def dist(a, b):
+    return np.hypot(a.x - b.x, a.y - b.y)
+
+
+def smooth(current, previous):
+    return previous * SMOOTHING + current * (1 - SMOOTHING)
 
 
 def camera_loop():
-    global last_click_time
+    global last_left_click, last_right_click, prev_x, prev_y
 
     cap = cv2.VideoCapture(0)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
 
     while state["camera_active"]:
         ret, frame = cap.read()
@@ -38,44 +59,67 @@ def camera_loop():
         results = hands.process(rgb)
 
         if results.multi_hand_landmarks:
-            hand_landmarks = results.multi_hand_landmarks[0]
-            landmarks = hand_landmarks.landmark
+            hand = results.multi_hand_landmarks[0]
+            lm = hand.landmark
 
-            # Draw landmarks
-            mp_draw.draw_landmarks(
-                frame, hand_landmarks, mp_hands.HAND_CONNECTIONS
+            mp_draw.draw_landmarks(frame, hand, mp_hands.HAND_CONNECTIONS)
+
+            thumb = lm[4]
+            index = lm[8]
+            middle = lm[12]
+            ring = lm[16]
+
+            # -------- PAUSE GESTURE (FIST) --------
+            fist = (
+                dist(index, thumb) < 0.04 and
+                dist(middle, thumb) < 0.04 and
+                dist(ring, thumb) < 0.04
             )
 
-            # Index finger tip (8)
-            index_tip = landmarks[8]
-            thumb_tip = landmarks[4]
+            state["mouse_paused"] = fist
 
-            # Convert to screen coordinates
-            x = int(index_tip.x * SCREEN_W)
-            y = int(index_tip.y * SCREEN_H)
+            if state["mouse_control"] and not state["mouse_paused"]:
+                # -------- MOUSE MOVE (SMOOTHED) --------
+                raw_x = index.x * SCREEN_W
+                raw_y = index.y * SCREEN_H
 
-            # Mouse movement
-            if state["mouse_control"]:
-                pyautogui.moveTo(x, y, duration=0.03)
+                smooth_x = smooth(raw_x, prev_x)
+                smooth_y = smooth(raw_y, prev_y)
 
-                # Distance between thumb & index finger
-                distance = np.hypot(
-                    index_tip.x - thumb_tip.x,
-                    index_tip.y - thumb_tip.y
+                pyautogui.moveTo(
+                    int(smooth_x),
+                    int(smooth_y),
+                    duration=MOVE_DURATION
                 )
 
-                current_time = time.time()
+                prev_x, prev_y = smooth_x, smooth_y
 
-                # CLICK gesture (pinch)
-                if distance < 0.035:
-                    if current_time - last_click_time > CLICK_DELAY:
+                now = time.time()
+
+                # -------- LEFT CLICK --------
+                if dist(index, thumb) < PINCH_THRESHOLD:
+                    if now - last_left_click > CLICK_COOLDOWN:
                         pyautogui.click()
-                        last_click_time = current_time
+                        last_left_click = now
+
+                # -------- RIGHT CLICK --------
+                if dist(middle, thumb) < PINCH_THRESHOLD:
+                    if now - last_right_click > CLICK_COOLDOWN:
+                        pyautogui.rightClick()
+                        last_right_click = now
+
+                # -------- SCROLL --------
+                if dist(index, middle) < SCROLL_THRESHOLD:
+                    scroll_delta = int((index.y - middle.y) * SCROLL_SPEED)
+                    scroll_delta = max(min(scroll_delta, 50), -50)  # clamp
+                    pyautogui.scroll(scroll_delta)
 
         cv2.imshow("Celestial Camera", frame)
 
         if cv2.waitKey(1) & 0xFF == 27:
             break
+
+        time.sleep(0.005)  # FPS stability
 
     cap.release()
     cv2.destroyAllWindows()
