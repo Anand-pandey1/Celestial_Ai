@@ -1,69 +1,45 @@
 import cv2
 import mediapipe as mp
-import pyautogui
-
-pyautogui.FAILSAFE = True
+import threading
+from state import state
 
 mp_hands = mp.solutions.hands
-mp_draw = mp.solutions.drawing_utils
+hands = mp_hands.Hands()
 
-hands = mp_hands.Hands(
-    static_image_mode=False,
-    max_num_hands=1,
-    min_detection_confidence=0.7,
-    min_tracking_confidence=0.7
-)
-
-screen_w, screen_h = pyautogui.size()
-camera_running = False
-
-
-def start_camera():
-    global camera_running
-    camera_running = True
-
+def camera_loop():
     cap = cv2.VideoCapture(0)
 
-    if not cap.isOpened():
-        print("❌ Camera not accessible")
-        return
-
-    print("📷 Camera + Hand Tracking started")
-
-    while camera_running:
-        success, frame = cap.read()
-        if not success:
+    while state["camera_active"]:
+        ret, frame = cap.read()
+        if not ret:
             break
 
         frame = cv2.flip(frame, 1)
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        results = hands.process(rgb)
 
-        result = hands.process(rgb)
+        if results.multi_hand_landmarks:
+            for hand in results.multi_hand_landmarks:
+                mp.solutions.drawing_utils.draw_landmarks(
+                    frame, hand, mp_hands.HAND_CONNECTIONS
+                )
 
-        if result.multi_hand_landmarks:
-            for hand in result.multi_hand_landmarks:
-                mp_draw.draw_landmarks(frame, hand, mp_hands.HAND_CONNECTIONS)
+        cv2.imshow("Celestial Camera", frame)
 
-                index_tip = hand.landmark[8]
-                x = int(index_tip.x * screen_w)
-                y = int(index_tip.y * screen_h)
-
-                pyautogui.moveTo(x, y, duration=0.05)
-
-        cv2.imshow("Celestial AI - Hand Tracking", frame)
-
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        if cv2.waitKey(1) & 0xFF == 27:
             break
 
-    stop_camera(cap)
-
-
-def stop_camera(cap=None):
-    global camera_running
-    camera_running = False
-
-    if cap:
-        cap.release()
-
+    cap.release()
     cv2.destroyAllWindows()
-    print("📴 Camera stopped")
+
+def start_camera():
+    if state["camera_active"]:
+        return "Camera already running"
+
+    state["camera_active"] = True
+    threading.Thread(target=camera_loop, daemon=True).start()
+    return "Camera started"
+
+def stop_camera():
+    state["camera_active"] = False
+    return "Camera stopped"
