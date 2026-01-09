@@ -2,5 +2,6 @@
 
 state = {
     "camera_active": False,
-    "current_mode": "TEXT"
+    "current_mode": "TEXT",
+    "mouse_control": False,
 }

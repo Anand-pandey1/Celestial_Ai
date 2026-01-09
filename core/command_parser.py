@@ -10,5 +10,11 @@ def parse_command(command):
     if command.startswith("mode"):
         _, mode = command.split(maxsplit=1)
         return {"action": "set_mode", "mode": mode}
+    
+    if "mouse control on" in command:
+        return {"action": "mouse_on"}
+
+    if "mouse control off" in command:
+        return {"action": "mouse_off"}
 
     return {"action": "execute", "command": command}
