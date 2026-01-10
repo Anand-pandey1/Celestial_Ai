@@ -1,5 +1,17 @@
+# python cache
 __pycache__/
 *.pyc
+
 .env
 .vscode/
 .idea/
+
+# Virtual environment
+.venv/
+
+# VOSK models
+models/vosk/
+
+# OS files
+.DS_Store
+Thumbs.db
