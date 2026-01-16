@@ -1,98 +1,84 @@
-import sys
-import keyboard
-
+import threading
+from voice_listener import VoiceListener
 from command_parser import parse_command
 from action_engine import execute_action
-from mode_manager import set_mode, get_mode
-from voice_listener import VoiceListener
+from keyword_actions import handle_keyword_action
+from context_manager import ContextManager
 
 
-# -------------------------
-# Emergency Exit
-# -------------------------
-def emergency_exit():
-    print("\n🚨 EMERGENCY EXIT ACTIVATED")
-    sys.exit(0)
+WAKE_WORDS = ["celestial", "hey celestial", "ok celestial"]
 
 
-keyboard.add_hotkey("ctrl+shift+q", emergency_exit)
+def has_wake_word(text):
+    return any(text.startswith(w) for w in WAKE_WORDS)
 
 
-# -------------------------
-# Initialize Voice System
-# -------------------------
-try:
-    voice = VoiceListener()
-except Exception as e:
-    print("❌ Voice system failed to initialize:")
-    print(e)
-    voice = None
+def strip_wake_word(text):
+    for w in WAKE_WORDS:
+        if text.startswith(w):
+            return text[len(w):].strip()
+    return text
 
 
-# -------------------------
-# Startup Banner
-# -------------------------
-print("=" * 45)
-print("✨ Celestial_AI Started")
-print("🧠 Current Mode:", get_mode())
-print("🎤 Voice Command: voice mode")
-print("🚨 Emergency Exit: CTRL + SHIFT + Q")
-print("=" * 45)
+def voice_loop(voice, context):
+    print("🎙 Continuous voice listening ON")
 
+    while True:
+        spoken = voice.listen_continuous()
+        spoken = spoken.lower()
 
-# -------------------------
-# Main Loop
-# -------------------------
-while True:
-    try:
-        command = input(f"[{get_mode()}] >> ").strip()
-
-        if not command:
+        if not has_wake_word(spoken):
             continue
 
-        # -------------------------
-        # Voice Mode Trigger
-        # -------------------------
-        if command.lower() == "voice mode":
-            if not voice:
-                print("Celestial_AI: ❌ Voice system unavailable")
-                continue
+        command = strip_wake_word(spoken)
+        print("🗣", command)
 
-            spoken = voice.listen()
+        command = context.resolve_pronoun(command)
 
-            if not spoken:
-                print("Celestial_AI: 🎤 No speech detected")
-                continue
+        keyword = handle_keyword_action(command)
+        if keyword.get("handled"):
+            print("🤖", keyword["response"])
+            continue
 
-            print("🗣️ You said:", spoken)
-            command = spoken
-
-        # -------------------------
-        # Parse Command
-        # -------------------------
         action = parse_command(command)
-
         if not action:
-            print("Celestial_AI: ❓ I didn't understand that")
+            print("❓ Unknown command")
             continue
 
-        # -------------------------
-        # Mode Switch
-        # -------------------------
-        if action.get("action") == "set_mode":
-            response = set_mode(action.get("mode"))
+        execute_action(action)
+        context.update(action)
 
-        # -------------------------
-        # Execute Action
-        # -------------------------
+
+def main():
+    print("🌌 Celestial_AI Online")
+
+    context = ContextManager()
+    voice = VoiceListener()
+
+    # Start voice thread
+    threading.Thread(
+        target=voice_loop,
+        args=(voice, context),
+        daemon=True
+    ).start()
+
+    # Text mode still works
+    while True:
+        cmd = input("> ").lower().strip()
+
+        if cmd in ("exit", "quit"):
+            print("👋 Shutting down")
+            break
+
+        cmd = context.resolve_pronoun(cmd)
+
+        action = parse_command(cmd)
+        if action:
+            execute_action(action)
+            context.update(action)
         else:
-            response = execute_action(action)
+            print("❓ Unknown command")
 
-        print("Celestial_AI:", response)
 
-    except KeyboardInterrupt:
-        print("\n👋 Shutting down Celestial_AI")
-        sys.exit(0)
-
-    except Exception as e:
-        print("❌ Runtime Error:", e)
+if __name__ == "__main__":
+    main()

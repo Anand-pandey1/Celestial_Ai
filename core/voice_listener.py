@@ -2,79 +2,57 @@ import json
 import queue
 import sounddevice as sd
 from vosk import Model, KaldiRecognizer
-import os
+from voice_grammar import build_grammar
 
-MODEL_PATH = os.path.join(
-    os.path.dirname(__file__),
-    "..",
-    "models",
-    "vosk",
-    "vosk-model-en-us-0.22-lgraph"
-)
-
+MODEL_PATH = "models/vosk/vosk-model-en-us-0.22-lgraph"
 SAMPLE_RATE = 16000
+CONFIDENCE_THRESHOLD = 0.5
 
 
 class VoiceListener:
     def __init__(self):
-        if not os.path.exists(MODEL_PATH):
-            raise FileNotFoundError(f"VOSK model not found at {MODEL_PATH}")
-
-        print("🔊 Loading VOSK model...")
         self.model = Model(MODEL_PATH)
 
-        # Grammar-based recognizer (IMPORTANT for lgraph)
-        grammar = [
-            "open chrome",
-            "open notepad",
-            "close chrome",
-            "start camera",
-            "stop camera",
-            "scroll up",
-            "scroll down",
-            "click",
-            "double click",
-            "exit voice",
-            "shutdown system"
-        ]
+        grammar = json.dumps(build_grammar())
+        self.recognizer = KaldiRecognizer(self.model, SAMPLE_RATE, grammar)
+        self.recognizer.SetWords(True)
 
-        self.recognizer = KaldiRecognizer(
-            self.model,
-            SAMPLE_RATE,
-            json.dumps(grammar)
-        )
+        self.audio_queue = queue.Queue()
+        self.active = False
 
-        self.q = queue.Queue()
-        self.running = False
+    def _callback(self, indata, frames, time, status):
+        if self.active:
+            self.audio_queue.put(bytes(indata))
 
-    def _audio_callback(self, indata, frames, time, status):
-        if status:
-            print("⚠️ Audio status:", status)
-        self.q.put(bytes(indata))
-
-    def listen(self):
-        self.running = True
-        print("🎤 Voice mode ACTIVE (listening...)")
-
+    def listen_continuous(self):
+        self.active = True
         with sd.RawInputStream(
             samplerate=SAMPLE_RATE,
             blocksize=8000,
             dtype="int16",
             channels=1,
-            callback=self._audio_callback,
+            callback=self._callback
         ):
-            while self.running:
-                data = self.q.get()
-
+            while self.active:
+                data = self.audio_queue.get()
                 if self.recognizer.AcceptWaveform(data):
                     result = json.loads(self.recognizer.Result())
-                    text = result.get("text", "").strip()
+                    text = result.get("text", "").lower()
 
-                    if text:
-                        if text == "exit voice":
-                            self.stop()
-                        return text
+                    if not text:
+                        continue
+
+                    confidence = self._confidence(result)
+                    if confidence < CONFIDENCE_THRESHOLD:
+                        continue
+
+                    return text
+
+    def _confidence(self, result):
+        words = result.get("result", [])
+        if not words:
+            return 0.0
+        return sum(w["conf"] for w in words) / len(words)
 
     def stop(self):
-        self.running = False
-        print("🎤 Voice mode STOPPED")
+        self.active = False
