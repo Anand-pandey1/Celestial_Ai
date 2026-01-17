@@ -1,55 +1,74 @@
 import os
+import time
 import subprocess
 import pyautogui
-import time
-from camera import start_camera, stop_camera
-from state import state
+import pygetwindow as gw
+import psutil
 
-def open_app(app_name):
-    # Level 1: Native Windows shell
-    try:
-        os.startfile(app_name)
-        return f"Opened {app_name} (native)"
-    except:
-        pass
+# Map spoken names → window keywords / exe hints
+APP_ALIASES = {
+    "calculator": ["calculator", "calc"],
+    "notepad": ["notepad"],
+    "chrome": ["chrome"],
+    "edge": ["edge"],
+    "paint": ["paint"]
+}
 
-    # Level 2: PATH executable
-    try:
-        subprocess.Popen(app_name)
-        return f"Opened {app_name} (PATH)"
-    except:
-        pass
 
-    # Level 3: UI automation fallback
+def open_app(app):
     try:
+        subprocess.Popen(app)
+        return f"{app} opened"
+
+    except Exception:
         pyautogui.press("win")
-        time.sleep(0.6)
-        pyautogui.write(app_name, interval=0.05)
-        time.sleep(0.6)
+        time.sleep(0.5)
+        pyautogui.write(app)
+        time.sleep(0.5)
         pyautogui.press("enter")
-        return f"Opened {app_name} (UI automation)"
-    except:
-        return f"Failed to open {app_name}"
+        return f"{app} opened via UI"
+
+
+def close_app(app):
+    keywords = APP_ALIASES.get(app, [app])
+
+    # ---------- METHOD 1: Close by window ----------
+    for win in gw.getAllWindows():
+        title = win.title.lower()
+        if any(k in title for k in keywords):
+            try:
+                win.activate()
+                time.sleep(0.3)
+                win.close()
+                return f"{app} closed (window)"
+            except Exception:
+                pass
+
+    # ---------- METHOD 2: Kill process ----------
+    for proc in psutil.process_iter(["name"]):
+        try:
+            pname = proc.info["name"].lower()
+            if any(k in pname for k in keywords):
+                proc.terminate()
+                return f"{app} closed (process)"
+        except Exception:
+            pass
+
+    # ---------- METHOD 3: ALT+F4 fallback ----------
+    try:
+        pyautogui.hotkey("alt", "f4")
+        return f"{app} closed (ui fallback)"
+    except Exception:
+        return f"Could not close {app}"
 
 
 def execute_action(action):
-    if action["action"] == "camera_on":
-        return start_camera()
+    act = action.get("action")
 
-    if action["action"] == "camera_off":
-        return stop_camera()
-
-    if action["action"] == "mouse_on":
-        state["mouse_control"] = True
-        return "Mouse control enabled"
-
-    if action["action"] == "mouse_off":
-        state["mouse_control"] = False
-        return "Mouse control disabled"
-    
-    if action["action"] == "open_app":
+    if act == "open_app":
         return open_app(action["app"])
 
+    if act == "close_app":
+        return close_app(action["app"])
 
-    return "Command executed"
-
+    return "Unknown action"
