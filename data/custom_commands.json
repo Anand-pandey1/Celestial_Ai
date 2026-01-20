@@ -1,0 +1,22 @@
+{
+  "study mode": {
+    "type": "sequence",
+    "actions": [
+      { "action": "open_app", "app": "chrome" },
+      { "action": "open_app", "app": "notepad" }
+    ]
+  },
+
+  "gaming mode": {
+    "type": "sequence",
+    "actions": [
+      { "action": "open_app", "app": "steam" },
+      { "action": "open_app", "app": "discord" }
+    ]
+  },
+
+  "good night": {
+    "type": "system",
+    "action": "exit"
+  }
+}

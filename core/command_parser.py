@@ -1,5 +1,9 @@
 import re
 
+from matplotlib import text
+from custom_command_engine import load_custom_commands
+
+
 # Known apps (you can extend this safely)
 KNOWN_APPS = {
     "calculator": "calc",
@@ -27,6 +31,14 @@ def parse_command(text: str) -> dict:
     text = text.lower().strip()
     text = remove_wake_word(text)
 
+    # -------- CUSTOM COMMANDS --------
+    custom_commands = load_custom_commands()
+    if text in custom_commands:
+        return {
+            "action": "custom_command",
+            "name": text
+        }
+
     # -------- EXIT --------
     if text in ["exit", "quit", "shutdown", "stop"]:
         return {"action": "exit"}
@@ -50,6 +62,7 @@ def parse_command(text: str) -> dict:
             "action": "close_app",
             "app": app
         }
+    
 
     # -------- CAMERA --------
     if "start camera" in text:
@@ -64,5 +77,6 @@ def parse_command(text: str) -> dict:
 
     if "voice mode" in text:
         return {"action": "set_mode", "mode": "voice"}
+    
 
     return {"action": "unknown", "raw": text}
