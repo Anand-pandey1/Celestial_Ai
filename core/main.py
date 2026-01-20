@@ -7,8 +7,59 @@ from action_engine import execute_action
 from mode_manager import get_mode, set_mode
 from voice_listener import VoiceListener
 from custom_command_engine import run_custom_command
+from custom_command_engine import save_custom_command
+from learned_commands import add_or_update_command, get_command
+from command_parser import parse_learning_sequence
+from executor import execute_actions
+
+from custom_command_engine import delete_custom_command
+
 
 RUNNING = True
+
+
+def learn_command_interactive():
+    print("\n🧠 Learning mode activated")
+
+    trigger = input("Trigger phrase: ").strip().lower()
+    if not trigger:
+        print("❌ Invalid trigger")
+        return
+
+    print("Enter actions (one per line). Type 'done' when finished:")
+
+    actions = []
+    while True:
+        cmd = input(">> ").strip().lower()
+        if cmd == "done":
+            break
+
+        action = parse_command(cmd)
+        if action.get("action") in ["open_app", "close_app"]:
+            actions.append(action)
+        else:
+            print("⚠️ Unsupported action, skipped")
+
+    if not actions:
+        print("❌ No actions learned")
+        return
+
+    save_custom_command(trigger, actions)
+    print(f"✅ Learned new command: '{trigger}'")
+
+
+def learn_command(command_name, spoken_steps):
+    actions = parse_learning_sequence(spoken_steps)
+    add_or_update_command(command_name, actions)
+    print(f"Updated command: {command_name}")
+
+def run_learned_command(command_name):
+    actions = get_command(command_name)
+    if actions:
+        execute_actions(actions)
+    else:
+        print("Command not found")
+
 
 
 # ----------------- EXIT HANDLER -----------------
@@ -64,6 +115,16 @@ def handle_action(action: dict):
             emergency_exit()
         elif result:
             print(result)
+    
+    elif act == "learn_command":
+        learn_command_interactive()
+
+    elif act == "delete_custom_command":
+        success = delete_custom_command(action["name"])
+        if success:
+            print(f"🗑 Deleted learned command: {action['name']}")
+        else:
+            print(f"⚠ Command '{action['name']}' not found")
 
     else:
         result = execute_action(action)

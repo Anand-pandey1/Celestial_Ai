@@ -4,6 +4,7 @@ import subprocess
 import pyautogui
 import pygetwindow as gw
 import psutil
+import shutil
 
 # Map spoken names → window keywords / exe hints
 APP_ALIASES = {
@@ -14,19 +15,67 @@ APP_ALIASES = {
     "paint": ["paint"]
 }
 
+WINDOWS_APP_MAP = {
+    "calculator": "calc",
+    "calc": "calc",
+    "camera": "start microsoft.windows.camera:",
+    "clock": "start ms-clock:",
+    "photos": "start ms-photos:",
+    "settings": "start ms-settings:",
+    "store": "start ms-windows-store:",
+    "edge": "msedge",
+    "explorer": "explorer",
+    "task manager": "taskmgr",
+}
 
 def open_app(app):
-    try:
-        subprocess.Popen(app)
-        return f"{app} opened"
+    app = app.lower().strip()
 
-    except Exception:
+    # ---------- METHOD 1: Windows URI ----------
+    if app in WINDOWS_APP_MAP:
+        subprocess.Popen(
+            WINDOWS_APP_MAP[app],
+            shell=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        time.sleep(0.8)
+        return f"{app} opened (windows)"
+
+    # ---------- METHOD 2: SYSTEM ONLY IF EXECUTABLE EXISTS ----------
+    exe_path = shutil.which(app)
+    if exe_path:
+        subprocess.Popen(
+            exe_path,
+            shell=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        time.sleep(0.6)
+        return f"{app} opened (system)"
+
+    # ---------- METHOD 3: UI FALLBACK (FOR UNKNOWN APPS) ----------
+    try:
+        # Ensure focus
+        pyautogui.click(10, 10)
+        time.sleep(0.3)
+
+        # Open Start
         pyautogui.press("win")
+        time.sleep(0.8)
+
+        # Type app name
+        pyautogui.write(app, interval=0.05)
         time.sleep(0.5)
-        pyautogui.write(app)
-        time.sleep(0.5)
+
+        # Launch
         pyautogui.press("enter")
-        return f"{app} opened via UI"
+        time.sleep(1.3)
+
+        return f"{app} opened (ui)"
+
+    except Exception as e:
+        return f"Failed to open {app}: {e}"
 
 
 def close_app(app):

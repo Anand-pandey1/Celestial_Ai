@@ -2,21 +2,56 @@
   "study mode": {
     "type": "sequence",
     "actions": [
-      { "action": "open_app", "app": "chrome" },
-      { "action": "open_app", "app": "notepad" }
+      {
+        "action": "open_app",
+        "app": "chrome"
+      },
+      {
+        "action": "open_app",
+        "app": "notepad"
+      }
     ]
   },
-
   "gaming mode": {
     "type": "sequence",
     "actions": [
-      { "action": "open_app", "app": "steam" },
-      { "action": "open_app", "app": "discord" }
+      {
+        "action": "open_app",
+        "app": "steam"
+      },
+      {
+        "action": "open_app",
+        "app": "discord"
+      }
     ]
   },
-
   "good night": {
     "type": "system",
     "action": "exit"
+  },
+  "coding time": {
+    "type": "sequence",
+    "actions": [
+      {
+        "action": "open_app",
+        "app": "firefox"
+      },
+      {
+        "action": "open_app",
+        "app": "calc"
+      },
+      {
+        "action": "open_app",
+        "app": "camera"
+      },
+      {
+        "action": "open_app",
+        "app": "clock"
+      },
+      {
+        "action": "open_app",
+        "app": "photos"
+      }
+    ]
   }
 }

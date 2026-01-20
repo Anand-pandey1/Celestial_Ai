@@ -1,20 +1,45 @@
 import re
-
-from matplotlib import text
 from custom_command_engine import load_custom_commands
 
+# ---------------- CONFIG ----------------
 
-# Known apps (you can extend this safely)
 KNOWN_APPS = {
     "calculator": "calc",
     "notepad": "notepad",
     "chrome": "chrome",
+    "firefox": "firefox",
     "edge": "msedge",
     "paint": "mspaint"
 }
 
 WAKE_WORDS = ["celestial", "hey celestial", "ok celestial"]
 
+# ---------------- LEARNING ----------------
+
+def parse_learning_sequence(sequence):
+    actions = []
+
+    for cmd in sequence:
+        cmd = cmd.lower().strip()
+
+        if cmd.startswith("open"):
+            app = cmd.replace("open", "").strip()
+            actions.append({
+                "action": "open_app",
+                "app": app
+            })
+
+        elif cmd.startswith("close"):
+            app = cmd.replace("close", "").strip()
+            actions.append({
+                "action": "close_app",
+                "app": app
+            })
+
+    return actions
+
+
+# ---------------- HELPERS ----------------
 
 def remove_wake_word(text: str) -> str:
     text = text.lower().strip()
@@ -24,12 +49,33 @@ def remove_wake_word(text: str) -> str:
     return text
 
 
+# ---------------- MAIN PARSER ----------------
+
 def parse_command(text: str) -> dict:
     if not text or not isinstance(text, str):
         return {"action": "none"}
 
     text = text.lower().strip()
     text = remove_wake_word(text)
+
+    # -------- LEARN COMMAND --------
+    if text in ["learn command", "teach command"]:
+        return {"action": "learn_command"}
+
+    # -------- DELETE LEARNED COMMAND --------
+    if text.startswith("delete learned command"):
+        name = text.replace("delete learned command", "").strip()
+        if name.startswith("called"):
+            name = name.replace("called", "").strip()
+
+        return {
+            "action": "delete_custom_command",
+            "name": name
+        }
+
+    # -------- EXIT --------
+    if text in ["exit", "quit", "shutdown", "stop"]:
+        return {"action": "exit"}
 
     # -------- CUSTOM COMMANDS --------
     custom_commands = load_custom_commands()
@@ -38,10 +84,6 @@ def parse_command(text: str) -> dict:
             "action": "custom_command",
             "name": text
         }
-
-    # -------- EXIT --------
-    if text in ["exit", "quit", "shutdown", "stop"]:
-        return {"action": "exit"}
 
     # -------- OPEN APP --------
     match = re.match(r"open (.+)", text)
@@ -62,21 +104,19 @@ def parse_command(text: str) -> dict:
             "action": "close_app",
             "app": app
         }
-    
 
     # -------- CAMERA --------
-    if "start camera" in text:
+    if text == "start camera":
         return {"action": "start_camera"}
 
-    if "stop camera" in text:
+    if text == "stop camera":
         return {"action": "stop_camera"}
 
     # -------- MODE --------
-    if "text mode" in text:
+    if text == "text mode":
         return {"action": "set_mode", "mode": "text"}
 
-    if "voice mode" in text:
+    if text == "voice mode":
         return {"action": "set_mode", "mode": "voice"}
-    
 
     return {"action": "unknown", "raw": text}

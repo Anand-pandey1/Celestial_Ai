@@ -32,3 +32,26 @@ def run_custom_command(command_name):
         return command["action"]
 
     return None
+
+def save_custom_command(trigger, actions):
+    commands = load_custom_commands()
+    commands[trigger] = {
+        "type": "sequence",
+        "actions": actions
+    }
+
+    with open(COMMANDS_FILE, "w", encoding="utf-8") as f:
+        json.dump(commands, f, indent=2)
+
+def delete_custom_command(command_name):
+    commands = load_custom_commands()
+
+    if command_name not in commands:
+        return False
+
+    del commands[command_name]
+
+    with open(COMMANDS_FILE, "w", encoding="utf-8") as f:
+        json.dump(commands, f, indent=2)
+
+    return True
