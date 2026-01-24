@@ -5,6 +5,8 @@ import pyautogui
 import pygetwindow as gw
 import psutil
 import shutil
+from camera import start_camera, stop_camera
+from state import state
 
 # Map spoken names → window keywords / exe hints
 APP_ALIASES = {
@@ -120,4 +122,18 @@ def execute_action(action):
     if act == "close_app":
         return close_app(action["app"])
 
+    if act == "start_camera":
+        return start_camera()
+
+    if act == "stop_camera":
+        return stop_camera()
+
+    if act == "mouse_on":
+        state["mouse_control"] = True
+        return "Mouse control enabled"
+
+    if act == "mouse_off":
+        state["mouse_control"] = False
+        return "Mouse control disabled"
+    
     return "Unknown action"

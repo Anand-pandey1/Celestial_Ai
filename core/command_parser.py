@@ -112,6 +112,13 @@ def parse_command(text: str) -> dict:
     if text == "stop camera":
         return {"action": "stop_camera"}
 
+    # -------- MOUSE CONTROL --------
+    if text in ["mouse control on", "enable mouse control", "start mouse control"]:
+        return {"action": "mouse_on"}
+
+    if text in ["mouse control off", "disable mouse control", "stop mouse control"]:
+        return {"action": "mouse_off"}
+
     # -------- MODE --------
     if text == "text mode":
         return {"action": "set_mode", "mode": "text"}
