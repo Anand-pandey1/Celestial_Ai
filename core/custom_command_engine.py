@@ -1,6 +1,7 @@
 import json
 import os
 from action_engine import execute_action
+from UI.floating_panel import update_status
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 COMMANDS_FILE = os.path.join(BASE_DIR, "data", "custom_commands.json")
@@ -42,6 +43,8 @@ def save_custom_command(trigger, actions):
 
     with open(COMMANDS_FILE, "w", encoding="utf-8") as f:
         json.dump(commands, f, indent=2)
+    
+    update_status(f"💾 Saved: {trigger}")
 
 def delete_custom_command(command_name):
     commands = load_custom_commands()

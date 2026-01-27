@@ -5,6 +5,7 @@ import pyautogui
 import numpy as np
 import time
 from state import state
+from UI.floating_panel import update_status
 
 # ===================== TUNING PARAMETERS =====================
 SMOOTHING = 0.75           # 0.6–0.85 (higher = smoother, slower)
@@ -127,13 +128,16 @@ def camera_loop():
 
 def start_camera():
     if state["camera_active"]:
+        update_status("Camera already ON")
         return "Camera already running"
 
     state["camera_active"] = True
+    update_status("📷 Camera ON")
     threading.Thread(target=camera_loop, daemon=True).start()
     return "Camera started"
 
 
 def stop_camera():
     state["camera_active"] = False
+    update_status("📷 Camera OFF")
     return "Camera stopped"

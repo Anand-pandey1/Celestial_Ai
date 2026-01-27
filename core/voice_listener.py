@@ -3,6 +3,7 @@ import queue
 import sounddevice as sd
 from vosk import Model, KaldiRecognizer
 from voice_grammar import build_grammar
+from UI.floating_panel import update_status
 
 MODEL_PATH = "models/vosk/vosk-model-en-us-0.22-lgraph"
 SAMPLE_RATE = 16000
@@ -26,6 +27,7 @@ class VoiceListener:
 
     def listen_continuous(self):
         self.active = True
+        update_status("🎤 Listening...")
         with sd.RawInputStream(
             samplerate=SAMPLE_RATE,
             blocksize=8000,
@@ -46,6 +48,7 @@ class VoiceListener:
                     if confidence < CONFIDENCE_THRESHOLD:
                         continue
 
+                    update_status(f"Recognized: {text}")
                     return text
 
     def _confidence(self, result):

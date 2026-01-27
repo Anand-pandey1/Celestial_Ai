@@ -1,3 +1,5 @@
+from UI.floating_panel import update_status
+
 def handle_keyword_action(command: str):
     command = command.lower()
 
@@ -9,12 +11,14 @@ def handle_keyword_action(command: str):
         }
 
     if "who are you" in command:
+        update_status("🤖 Celestial AI online")
         return {
             "handled": True,
             "response": "I am Celestial_AI, your personal offline assistant."
         }
 
     if "focus mode" in command:
+        update_status("🧠 Focus Mode ON")
         return {
             "handled": True,
             "response": "🧠 Focus mode enabled. Notifications muted."

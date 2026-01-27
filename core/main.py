@@ -20,7 +20,12 @@ from custom_command_engine import delete_custom_command
 
 
 import threading
-from UI.floating_panel import start_ui
+from UI.floating_panel import start_ui, update_status, toggle_ui
+
+
+import keyboard
+keyboard.add_hotkey("ctrl+shift+u", toggle_ui)
+
 
 
 RUNNING = True
@@ -28,10 +33,12 @@ RUNNING = True
 
 def learn_command_interactive():
     print("\n🧠 Learning mode activated")
+    update_status("🧠 Learning mode active")
 
     trigger = input("Trigger phrase: ").strip().lower()
     if not trigger:
         print("❌ Invalid trigger")
+        update_status("Listening")
         return
 
     print("Enter actions (one per line). Type 'done' when finished:")
@@ -50,10 +57,12 @@ def learn_command_interactive():
 
     if not actions:
         print("❌ No actions learned")
+        update_status("Listening")
         return
 
     save_custom_command(trigger, actions)
     print(f"✅ Learned new command: '{trigger}'")
+    update_status(f"✓ Learned: {trigger}")
 
 
 def learn_command(command_name, spoken_steps):
@@ -115,29 +124,37 @@ def handle_action(action: dict):
         emergency_exit()
 
     elif act == "set_mode":
-        print(set_mode(action["mode"]))
+        mode_result = set_mode(action["mode"])
+        print(mode_result)
+        update_status(f"Mode: {action['mode'].upper()}")
 
     elif act == "custom_command":
+        update_status(f"Executing: {action['name']}")
         result = run_custom_command(action["name"])
         if result == "exit":
             emergency_exit()
         elif result:
             print(result)
+            update_status("Listening")
     
     elif act == "learn_command":
         learn_command_interactive()
+        update_status("Listening")
 
     elif act == "delete_custom_command":
         success = delete_custom_command(action["name"])
         if success:
             print(f"🗑 Deleted learned command: {action['name']}")
+            update_status(f"✓ Deleted: {action['name']}")
         else:
             print(f"⚠ Command '{action['name']}' not found")
+            update_status("Listening")
 
     else:
         result = execute_action(action)
         if result:
             print(result)
+            update_status("Listening")
 
 
 # ----------------- MAIN -----------------
@@ -151,6 +168,7 @@ def main():
     ui_thread = threading.Thread(target=start_ui, daemon=True)
     ui_thread.start()
 
+    update_status("Listening")
 
     # Text loop
     global RUNNING
