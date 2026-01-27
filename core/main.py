@@ -1,6 +1,10 @@
 import sys
+import os
 import threading
 import keyboard
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from command_parser import parse_command
 from action_engine import execute_action
@@ -13,6 +17,10 @@ from command_parser import parse_learning_sequence
 from executor import execute_actions
 
 from custom_command_engine import delete_custom_command
+
+
+import threading
+from UI.floating_panel import start_ui
 
 
 RUNNING = True
@@ -140,6 +148,9 @@ def main():
 
     # Start voice listener thread
     threading.Thread(target=voice_loop, daemon=True).start()
+    ui_thread = threading.Thread(target=start_ui, daemon=True)
+    ui_thread.start()
+
 
     # Text loop
     global RUNNING
