@@ -1,10 +1,15 @@
 import os
+import sys
 import time
 import subprocess
 import pyautogui
 import pygetwindow as gw
 import psutil
 import shutil
+
+# Add parent directory to path for UI imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from camera import start_camera, stop_camera
 from state import state
 from UI.floating_panel import update_status

@@ -1,3 +1,9 @@
+import os
+import sys
+
+# Add parent directory to path for UI imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from UI.floating_panel import update_status
 
 def handle_keyword_action(command: str):

@@ -3,8 +3,10 @@ import os
 import threading
 import keyboard
 
-# Add parent directory to path for imports
+# Add parent directory to path for imports FIRST
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from camera import start_camera, stop_camera
 
 from command_parser import parse_command
 from action_engine import execute_action
@@ -20,15 +22,45 @@ from custom_command_engine import delete_custom_command
 
 
 import threading
-from UI.floating_panel import start_ui, update_status, toggle_ui
+from UI.floating_panel import start_ui, update_status, toggle_ui, register_callbacks
 
 
 import keyboard
 keyboard.add_hotkey("ctrl+shift+u", toggle_ui)
 
+from UI.tray_app import run_tray
+from command_parser import parse_command
+from action_engine import execute_action
+
 
 
 RUNNING = True
+
+def ui_command_handler(text):
+    try:
+        print(f"[UI Command] {text}")
+        update_status("Processing...")
+        action = parse_command(text)
+        handle_action(action)
+    except Exception as e:
+        print(f"UI Command error: {e}")
+        update_status("Error processing command")
+
+
+
+def ui_voice_toggle(enabled):
+    global VOICE_ENABLED
+    VOICE_ENABLED = enabled
+    update_status("Listening" if enabled else "Voice Paused")
+
+def ui_camera_toggle(enabled):
+    if enabled:
+        start_camera()
+        update_status("Camera ON")
+    else:
+        stop_camera()
+        update_status("Listening")
+
 
 
 def learn_command_interactive():
@@ -116,6 +148,7 @@ def voice_loop():
 # ----------------- ACTION HANDLER -----------------
 def handle_action(action: dict):
     if not action or "action" not in action:
+        update_status("Listening")
         return
 
     act = action["action"]
@@ -135,11 +168,11 @@ def handle_action(action: dict):
             emergency_exit()
         elif result:
             print(result)
-            update_status("Listening")
+        update_status("Listening")
     
     elif act == "learn_command":
-        learn_command_interactive()
-        update_status("Listening")
+        # Run in separate thread to avoid blocking UI
+        threading.Thread(target=learn_command_interactive, daemon=True).start()
 
     elif act == "delete_custom_command":
         success = delete_custom_command(action["name"])
@@ -148,13 +181,13 @@ def handle_action(action: dict):
             update_status(f"✓ Deleted: {action['name']}")
         else:
             print(f"⚠ Command '{action['name']}' not found")
-            update_status("Listening")
+        update_status("Listening")
 
     else:
         result = execute_action(action)
         if result:
             print(result)
-            update_status("Listening")
+        update_status("Listening")
 
 
 # ----------------- MAIN -----------------
@@ -165,10 +198,24 @@ def main():
 
     # Start voice listener thread
     threading.Thread(target=voice_loop, daemon=True).start()
-    ui_thread = threading.Thread(target=start_ui, daemon=True)
+    
+    # Start UI with callbacks
+    ui_thread = threading.Thread(
+        target=start_ui,
+        args=(ui_voice_toggle, ui_camera_toggle, ui_command_handler),
+        daemon=True
+    )
     ui_thread.start()
 
     update_status("Listening")
+
+    tray_thread = threading.Thread(
+        target=run_tray,
+        args=(lambda: os._exit(0),),
+        daemon=True
+    )
+    tray_thread.start()
+
 
     # Text loop
     global RUNNING

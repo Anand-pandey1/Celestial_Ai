@@ -1,6 +1,12 @@
 import json
+import os
+import sys
 import queue
 import sounddevice as sd
+
+# Add parent directory to path for UI imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from vosk import Model, KaldiRecognizer
 from voice_grammar import build_grammar
 from UI.floating_panel import update_status
