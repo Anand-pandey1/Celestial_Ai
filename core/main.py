@@ -200,14 +200,20 @@ def main():
     threading.Thread(target=voice_loop, daemon=True).start()
     
     # Start UI with callbacks
+    print("Starting UI...")
     ui_thread = threading.Thread(
         target=start_ui,
         args=(ui_voice_toggle, ui_camera_toggle, ui_command_handler),
         daemon=True
     )
     ui_thread.start()
+    
+    # Give UI time to initialize
+    import time
+    time.sleep(0.5)
 
     update_status("Listening")
+    print("UI started successfully")
 
     tray_thread = threading.Thread(
         target=run_tray,
